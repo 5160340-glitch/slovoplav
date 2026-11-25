@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Словоплав 🎡</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#1e1b4b">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Словоплав">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body {
+    margin: 0; min-height: 100vh;
+    font-family: system-ui, -apple-system, sans-serif;
+    background: radial-gradient(circle at 50% 0%, #1e1b4b, #0f0c29);
+    color: #fff; display: flex; flex-direction: column;
+    align-items: center; padding: 20px 16px calc(20px + env(safe-area-inset-bottom));
+    user-select: none;
+  }
+  h1 { font-size: 26px; margin: 0 0 4px; }
+  .sub { color: #a5b4fc; font-size: 13px; margin-bottom: 16px; text-align:center; }
+
+  /* ---------- Барабан ---------- */
+  .drum-wrap { position: relative; width: 200px; height: 200px; margin-bottom: 14px; }
+  .drum {
+    width: 100%; height: 100%; border-radius: 50%;
+    background: conic-gradient(#f472b6 0 25%, #818cf8 0 50%, #34d399 0 75%, #fbbf24 0 100%);
+    box-shadow: 0 0 0 6px #312e81, 0 0 40px #6366f1aa;
+    display: flex; align-items: center; justify-content: center;
+    transition: transform 2.2s cubic-bezier(.2,.9,.2,1);
+  }
+  .drum.spin { transform: rotate(1440deg); }
+  .drum-center {
+    width: 110px; height: 110px; border-radius: 50%;
+    background: #0f0c29; display: flex; align-items: center;
+    justify-content: center; font-size: 38px;
+  }
+  .drum-center.win { animation: pop .6s ease; }
+  @keyframes pop { 0%{transform:scale(1)} 50%{transform:scale(1.4)} 100%{transform:scale(1)} }
+
+  /* ---------- Плавление ---------- */
+  .melt-stage {
+    position: relative; width: 100%; max-width: 360px; height: 90px;
+    margin: 6px 0 0; display: flex; align-items: center; justify-content: center;
+    overflow: visible;
+  }
+  .melt-word {
+    position: absolute; font-size: 18px; font-weight: 700;
+    color: #c7d2fe; padding: 4px 10px; border-radius: 10px;
+    background: #312e8166; border: 1px solid #6366f1;
+    transition: transform .9s cubic-bezier(.6,-0.3,.3,1.4), opacity .9s ease, filter .9s;
+    white-space: nowrap;
+  }
+  .melt-word.pour {
+    transform: translate(var(--tx), var(--ty)) scale(.3) rotate(var(--rot));
+    opacity: 0; filter: blur(4px);
+  }
+  .melt-drop {
+    position: absolute; left: 50%; top: 50%;
+    width: 14px; height: 14px; border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, #fff, #818cf8 40%, #4f46e5);
+    transform: translate(-50%,-50%) scale(0);
+    opacity: 0; box-shadow: 0 0 24px #818cf8;
+  }
+  .melt-drop.grow { animation: dropGrow 1s ease forwards; }
+  @keyframes dropGrow {
+    0%   { transform: translate(-50%,-50%) scale(0); opacity: 0; }
+    40%  { transform: translate(-50%,-50%) scale(2.2); opacity: 1; }
+    100% { transform: translate(-50%,-50%) scale(1.2); opacity: .9; }
+  }
+  .melt-drop.burst { animation: dropBurst .7s ease forwards; }
+  @keyframes dropBurst {
+    0%   { transform: translate(-50%,-50%) scale(1.2); opacity: .9; }
+    100% { transform: translate(-50%,-50%) scale(4); opacity: 0; filter: blur(10px); }
+  }
+
+  /* ---------- Ввод ---------- */
+  .inputs { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; margin-bottom: 10px; }
+  input {
+    padding: 10px 12px; border-radius: 10px; border: 1px solid #4f46e5;
+    background: #1e1b4b; color: #fff; font-size: 15px; width: 110px; text-align: center;
+  }
+  input:focus { outline: 2px solid #818cf8; }
+  button {
+    padding: 11px 20px; border-radius: 12px; border: none; cursor: pointer;
+    font-size: 15px; font-weight: 600; color: #fff;
+    background: linear-gradient(135deg, #6366f1, #ec4899);
+    transition: transform .1s;
+  }
+  button:active { transform: scale(.95); }
+  button:disabled { opacity: .5; cursor: wait; }
+
+  /* ---------- Редкость / результат ---------- */
+  .rarity { margin: 6px 0 2px; font-size: 13px; font-weight: 700; letter-spacing:1px;
+            text-transform: uppercase; min-height: 18px; }
+  .rarity.common    { color:#9ca3af; }
+  .rarity.rare      { color:#38bdf8; text-shadow:0 0 12px #38bdf8; }
+  .rarity.epic      { color:#c084fc; text-shadow:0 0 12px #c084fc; }
+  .rarity.legendary { color:#fbbf24; text-shadow:0 0 16px #fbbf24; animation:glow 1s infinite alternate; }
+  @keyframes glow { from{filter:brightness(1)} to{filter:brightness(1.5)} }
+
+  .result { min-height: 42px; font-size: 28px; font-weight: 800; text-align: center;
+            letter-spacing: 1px; word-break: break-word; }
+  .score { font-size: 13px; color:#fbbf24; min-height: 18px; text-align:center; }
+  .actions { display: flex; gap: 8px; margin-top: 6px; }
+  .actions button { font-size: 13px; padding: 9px 14px; background:#312e81; }
+  .actions button:disabled { opacity:.3; }
+
+  /* ---------- Таблица ---------- */
+  .table-wrap { width: 100%; max-width: 520px; margin-top: 24px; }
+  .table-wrap h2 { font-size: 14px; color:#a5b4fc; margin: 0 0 8px;
+                   display:flex; justify-content:space-between; align-items:center; }
+  .table-wrap h2 button {
+    font-size: 11px; padding: 5px 10px; background:#312e81; font-weight:500;
+  }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; padding: 6px 8px; color:#a5b4fc; font-weight:600;
+       border-bottom: 1px solid #312e81; font-size: 11px; text-transform:uppercase; }
+  td { padding: 7px 8px; border-bottom: 1px solid #1e1b4b; }
+  tr:active { background:#312e8166; }
+  tr { cursor:pointer; transition: background .15s; }
+  tr:hover { background:#312e8166; }
+  .word-cell { font-weight:700; }
+  .word-cell.rare      { color:#38bdf8; }
+  .word-cell.epic      { color:#c084fc; }
+  .word-cell.legendary { color:#fbbf24; }
+  .badge {
+    display:inline-block; font-size:10px; padding:2px 7px; border-radius:999px;
+    font-weight:700; letter-spacing:.5px;
+  }
+  .badge.common    { background:#374151; color:#d1d5db; }
+  .badge.rare      { background:#0c4a6e; color:#38bdf8; }
+  .badge.epic      { background:#581c87; color:#c084fc; }
+  .badge.legendary { background:#78350f; color:#fbbf24; }
+  .count-cell { color:#6b7280; font-size:11px; text-align:right; }
+  .date-cell { color:#6b7280; font-size:10px; }
+  .empty-row { color:#6b7280; font-size:12px; text-align:center; padding:20px; }
+
+  /* ---------- Салют ---------- */
+  .confetti {
+    position: fixed; pointer-events:none; font-size:22px;
+    animation: fall 1.4s ease-out forwards; z-index:999;
+  }
+  @keyframes fall {
+    0% { transform: translateY(0) rotate(0); opacity:1; }
+    100% { transform: translateY(70vh) rotate(360deg); opacity:0; }
+  }
+  .hint { color:#6b7280; font-size:11px; margin-top:14px; text-align:center; max-width:400px; }
+</style>
+</head>
+<body>
+
+<h1>🎡 Словоплав</h1>
+<div class="sub">Введи 2–3 слова, крути и переплавляй!</div>
+
+<div class="drum-wrap">
+  <div class="drum" id="drum">
+    <div class="drum-center" id="drumCenter">🎡</div>
+  </div>
+</div>
+
+<div class="inputs">
+  <input id="w1" placeholder="слово 1" maxlength="20">
+  <input id="w2" placeholder="слово 2" maxlength="20">
+  <input id="w3" placeholder="слово 3" maxlength="20">
+</div>
+
+<button id="spinBtn">Крутить 🎡</button>
+
+<!-- Сцена плавления -->
+<div class="melt-stage" id="meltStage">
+  <div class="melt-drop" id="meltDrop"></div>
+</div>
+
+<div class="rarity" id="rarity"></div>
+<div class="result" id="result"></div>
+<div class="score" id="score"></div>
+
+<div class="actions">
+  <button id="shareBtn" disabled>📤 Поделиться</button>
+</div>
+
+<!-- Таблица -->
+<div class="table-wrap">
+  <h2>
+    📊 Таблица слов
+    <button id="clearBtn">Очистить</button>
+  </h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Слово</th>
+        <th>Редкость</th>
+        <th style="text-align:right">×</th>
+        <th>Дата</th>
+      </tr>
+    </thead>
+    <tbody id="tableBody"></tbody>
+  </table>
+</div>
+
+<div class="hint">Нажми на строку таблицы, чтобы отправить слово в поле ввода. Новые слова сохраняются автоматически.</div>
+
+<script>
+/* ================= УТИЛИТЫ ================= */
+const $ = id => document.getElementById(id);
+const drum = $('drum'), drumCenter = $('drumCenter');
+const resultEl = $('result'), scoreEl = $('score'), rarityEl = $('rarity');
+const spinBtn = $('spinBtn'), shareBtn = $('shareBtn');
+const meltStage = $('meltStage'), meltDrop = $('meltDrop');
+const tableBody = $('tableBody'), clearBtn = $('clearBtn');
+
+/* Хранилище: [{ w, r, count, date }] */
+let words = JSON.parse(localStorage.getItem('slovoplav_v3') || '[]');
+let lastResult = null;
+
+/* ================= ЗВУК ================= */
+const AudioCtx = window.AudioContext || window.webkitAudioContext;
+let audioCtx = null;
+function ensureAudio() {
+  if (!audioCtx) audioCtx = new AudioCtx();
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+}
+function beep(freq, dur, type='sine', vol=0.15, when=0) {
+  ensureAudio();
+  const t = audioCtx.currentTime + when;
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.type = type; osc.frequency.value = freq;
+  gain.gain.setValueAtTime(0, t);
+  gain.gain.linearRampToValueAtTime(vol, t + 0.01);
+  gain.gain.exponentialRampToValueAtTime(0.001, t + dur);
+  osc.connect(gain); gain.connect(audioCtx.destination);
+  osc.start(t); osc.stop(t + dur + 0.02);
+}
+const sounds = {
+  tick()   { beep(600, 0.06, 'square', 0.05); },
+  melt()   { beep(200, 0.5, 'sawtooth', 0.06); beep(280, 0.6, 'sine', 0.05, 0.1); },
+  common() { beep(330, 0.12); },
+  rare()   { beep(440, 0.12); beep(660, 0.14, 'sine', 0.12, 0.10); },
+  epic()   { beep(523,0.12); beep(659,0.12,'sine',0.12,0.10); beep(784,0.18,'sine',0.12,0.20); },
+  legendary() {
+    [523,659,784,1047].forEach((f,i)=>beep(f,0.2,'triangle',0.14,i*0.10));
+    beep(1319,0.4,'sine',0.10,0.42);
+  }
+};
+
+/* ================= ПЕРЕПЛАВКА ================= */
+function merge(a, b) {
+  a = a.toLowerCase(); b = b.toLowerCase();
+  if (!a || !b) return a || b;
+  if (a.includes(b)) return a;
+  if (b.includes(a)) return b;
+  const base = a.replace(/[аеёиоуыэюя]$/i, '');
+  const bBase = b.replace(/[аеёиоуыэюя]$/i, '');
+  const vowels = ['о','е','и','а'];
+  const conn = vowels[Math.floor(Math.random()*vowels.length)];
+  const candidates = [
+    base + conn + b,
+    base + b,
+    a + bBase,
+    a.slice(0, Math.ceil(a.length/2)) + b.slice(-Math.ceil(b.length/2)),
+    a + b
+  ];
+  const clean = candidates.filter(w => !/(.)\1\1/.test(w) && w.length >= 3);
+  const pool = clean.length ? clean : candidates;
+  return pool.sort((x,y) => beauty(y) - beauty(x))[0];
+}
+function mergeMany(ws) { return ws.reduce((a,w)=>merge(a,w)); }
+
+/* ================= КРАСОТА / РЕДКОСТЬ ================= */
+function beauty(w) {
+  let s = 0;
+  if (/(.)\1/.test(w)) s -= 10;
+  if (/(.)\1\1/.test(w)) s -= 20;
+  let alt = 0;
+  for (let i=1;i<w.length;i++) {
+    const pv = /[аеёиоуыэюя]/.test(w[i-1]);
+    const cv = /[аеёиоуыэюя]/.test(w[i]);
+    if (pv !== cv) alt++;
+  }
+  s += alt * 2;
+  if (/[ое]/.test(w)) s += 3;
+  s += Math.min(w.length, 12);
+  return s;
+}
+function rarityOf(w) {
+  const b = beauty(w);
+  const niceEnd = /(а|о|е|ия|ция|ние|ость|тель|лёт|ход|пад)$/.test(w) ? 3 : 0;
+  const s = b + niceEnd;
+  if (s >= 26) return { key:'legendary', label:'🌟 Легендарное', sound:'legendary' };
+  if (s >= 21) return { key:'epic',      label:'💜 Эпическое',   sound:'epic' };
+  if (s >= 15) return { key:'rare',      label:'💙 Редкое',      sound:'rare' };
+  return { key:'common', label:'⚪ Обычное', sound:'common' };
+}
+
+/* ================= АНИМАЦИЯ ПЛАВЛЕНИЯ ================= */
+function animateMelt(wordsList, onDone) {
+  // очищаем сцену (кроме капли)
+  [...meltStage.querySelectorAll('.melt-word')].forEach(e => e.remove());
+  meltDrop.className = 'melt-drop';
+
+  const n = wordsList.length;
+  const stageW = meltStage.clientWidth || 360;
+
+  // расставляем слова
+  wordsList.forEach((w, i) => {
+    const el = document.createElement('div');
+    el.className = 'melt-word';
+    el.textContent = w;
+    // позиция по горизонтали
+    const spacing = stageW / (n + 1);
+    el.style.left = (spacing * (i+1)) + 'px';
+    el.style.transform = 'translate(-50%, 0)';
+    el.style.top = '50%';
+    el.style.marginTop = '-16px';
+    meltStage.appendChild(el);
+
+    // случайное направление к центру
+    requestAnimationFrame(() => {
+      setTimeout(() => {
+        const tx = (stageW/2) - (spacing*(i+1));
+        const ty = (Math.random() - 0.5) * 10;
+        const rot = (Math.random() - 0.5) * 120;
+        el.style.setProperty('--tx', tx + 'px');
+        el.style.setProperty('--ty', ty + 'px');
+        el.style.setProperty('--rot', rot + 'deg');
+        el.classList.add('pour');
+      }, i * 120);
+    });
+  });
+
+  sounds.melt();
+
+  // капля появляется после «стекания»
+  setTimeout(() => {
+    meltDrop.classList.add('grow');
+  }, n * 120 + 700);
+
+  // «взрыв» капли и результат
+  setTimeout(() => {
+    meltDrop.classList.remove('grow');
+    meltDrop.classList.add('burst');
+    onDone && onDone();
+  }, n * 120 + 1700);
+}
+
+/* ================= КРУЧЕНИЕ ================= */
+spinBtn.addEventListener('click', () => {
+  ensureAudio();
+  const wordsList = [1,2,3].map(i => $('w'+i).value.trim()).filter(Boolean);
+  if (wordsList.length < 2) { resultEl.textContent = 'Нужно 2–3 слова!'; return; }
+
+  spinBtn.disabled = true;
+  shareBtn.disabled = true;
+  resultEl.textContent = '';
+  scoreEl.textContent = '';
+  rarityEl.textContent = '';
+  rarityEl.className = 'rarity';
+  drumCenter.textContent = '🌀';
+
+  drum.classList.remove('spin');
+  void drum.offsetWidth;
+  drum.classList.add('spin');
+
+  // тиканье
+  let ticks = 0;
+  const tickInt = setInterval(() => {
+    sounds.tick();
+    if (++ticks > 14) clearInterval(tickInt);
+  }, 150);
+
+  // через 2.2 сек барабан остановился → плавление
+  setTimeout(() => {
+    clearInterval(tickInt);
+    drumCenter.textContent = '🧪';
+
+    animateMelt(wordsList, () => {
+      // плавление закончилось → показываем результат
+      const merged = mergeMany(wordsList);
+      lastResult = merged;
+      resultEl.textContent = merged;
+      drumCenter.textContent = '✨';
+      drumCenter.classList.remove('win');
+      void drumCenter.offsetWidth;
+      drumCenter.classList.add('win');
+
+      const r = rarityOf(merged);
+      rarityEl.textContent = r.label;
+      rarityEl.className = 'rarity ' + r.key;
+      scoreEl.textContent = 'красота: ' + beauty(merged);
+
+      sounds[r.sound]();
+      const cn = r.key==='legendary'?24 : r.key==='epic'?14 : r.key==='rare'?8 : 3;
+      confetti(cn);
+
+      addToTable(merged, r.key);
+
+      shareBtn.disabled = false;
+      spinBtn.disabled = false;
+
+      // очищаем сцену через паузу
+      setTimeout(() => {
+        [...meltStage.querySelectorAll('.melt-word')].forEach(e => e.remove());
+        meltDrop.className = 'melt-drop';
+      }, 800);
+    });
+  }, 2300);
+});
+
+/* ================= ТАБЛИЦА ================= */
+function addToTable(word, rarityKey) {
+  const existing = words.find(x => x.w === word);
+  if (existing) {
+    existing.count = (existing.count || 1) + 1;
+    existing.date = Date.now();
+  } else {
+    words.push({ w: word, r: rarityKey, count: 1, date: Date.now() });
+  }
+  // сортировка: легендарные сверху, потом по дате
+  const order = { legendary:0, epic:1, rare:2, common:3 };
+  words.sort((a,b) => (order[a.r]-order[b.r]) || (b.date - a.date));
+  save();
+  renderTable();
+}
+function save() { localStorage.setItem('slovoplav_v3', JSON.stringify(words)); }
+
+function renderTable() {
+  if (!words.length) {
+    tableBody.innerHTML = '<tr><td colspan="4" class="empty-row">пока пусто — покрути барабан</td></tr>';
+    return;
+  }
+  tableBody.innerHTML = '';
+  words.forEach(item => {
+    const tr = document.createElement('tr');
+    const d = new Date(item.date);
+    const dateStr = `${d.getDate()}.${String(d.getMonth()+1).padStart(2,'0')}`;
+    tr.innerHTML = `
+      <td class="word-cell ${item.r}">${item.w}</td>
+      <td><span class="badge ${item.r}">${rarityLabel(item.r)}</span></td>
+      <td class="count-cell">${item.count || 1}</td>
+      <td class="date-cell">${dateStr}</td>
+    `;
+    tr.onclick = () => {
+      const inputs = [$('w1'),$('w2'),$('w3')];
+      const empty = inputs.find(i => !i.value.trim());
+      if (empty) empty.value = item.w;
+      else { inputs[0].value = inputs[1].value; inputs[1].value = inputs[2].value; inputs[2].value = item.w; }
+      inputs[0].scrollIntoView({behavior:'smooth', block:'center'});
+    };
+    tableBody.appendChild(tr);
+  });
+}
+function rarityLabel(k) {
+  return { common:'обыч', rare:'редк', epic:'эпик', legendary:'лег' }[k] || '—';
+}
+
+clearBtn.onclick = () => {
+  if (confirm('Очистить всю таблицу слов?')) {
+    words = [];
+    save();
+    renderTable();
+  }
+};
+
+/* ================= ПОДЕЛИТЬСЯ ================= */
+shareBtn.addEventListener('click', async () => {
+  if (!lastResult) return;
+  const r = rarityOf(lastResult);
+  const text = `Я создал слово «${lastResult}» в игре Словоплав! ${r.label} 🎡✨`;
+  const url = location.href;
+  if (navigator.share) {
+    try { await navigator.share({ title:'Словоплав', text, url }); return; }
+    catch(e) {}
+  }
+  try {
+    await navigator.clipboard.writeText(text + ' ' + url);
+    shareBtn.textContent = '✅ Скопировано';
+    setTimeout(()=>shareBtn.textContent='📤 Поделиться', 1800);
+  } catch(e) {
+    prompt('Скопируй и поделись:', text + ' ' + url);
+  }
+});
+
+/* ================= САЛЮТ ================= */
+function confetti(n) {
+  const emojis = ['🎉','✨','⭐','🎊','💫','🌟'];
+  for (let i=0;i<n;i++) {
+    const el = document.createElement('div');
+    el.className = 'confetti';
+    el.textContent = emojis[Math.floor(Math.random()*emojis.length)];
+    el.style.left = Math.random()*100 + 'vw';
+    el.style.top = (15 + Math.random()*30) + 'vh';
+    el.style.fontSize = (16 + Math.random()*20) + 'px';
+    document.body.appendChild(el);
+    setTimeout(()=>el.remove(), 1500);
+  }
+}
+
+/* ================= PWA ================= */
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
+
+/* ================= СТАРТ ================= */
+$('w1').value = 'снег';
+$('w2').value = 'падать';
+renderTable();
+</script>
+</body>
+</html>
